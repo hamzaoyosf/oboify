@@ -256,7 +256,7 @@ export function useConvertToTask() {
           notes: cleanNotes,
           status: 'draft',
           gtdList: 'scheduled',
-          quadrant: ai?.suggestedQuadrant || (ai?.priority === 'high' ? 'do' : null),
+          quadrant: 'q2', // Automate Parent Recall Card Categorization: routes to Q2 (Schedule)
           priority: ai?.priority || 'medium',
           dueDate: baseDateStr,
           scheduledDate: baseDateStr,
@@ -284,7 +284,7 @@ export function useConvertToTask() {
           notes: `1st Recall (24h spaced interval) for "${customTitle}". Revisit core concepts and verify recall.`,
           status: 'draft',
           gtdList: 'scheduled',
-          quadrant: 'schedule',
+          quadrant: 'q2', // Rule 2: Explicitly assign quadrant: 'q2' (Schedule) by default
           priority: ai?.priority || 'medium',
           dueDate: date1,
           scheduledDate: date1,
@@ -312,7 +312,7 @@ export function useConvertToTask() {
           notes: `2nd Recall (2 weeks spaced interval) for "${customTitle}". Test retention and practical execution.`,
           status: 'draft',
           gtdList: 'scheduled',
-          quadrant: 'schedule',
+          quadrant: 'q2', // Rule 2: Explicitly assign quadrant: 'q2' (Schedule) by default
           priority: ai?.priority || 'medium',
           dueDate: date2,
           scheduledDate: date2,
@@ -340,7 +340,7 @@ export function useConvertToTask() {
           notes: `3rd Recall (2 months spaced interval) for "${customTitle}". Verify long-term retention and mastery.`,
           status: 'draft',
           gtdList: 'scheduled',
-          quadrant: 'schedule',
+          quadrant: 'q2', // Rule 2: Explicitly assign quadrant: 'q2' (Schedule) by default
           priority: ai?.priority || 'medium',
           dueDate: date3,
           scheduledDate: date3,
@@ -377,7 +377,7 @@ export function useConvertToTask() {
         notes: cleanNotes,
         status: 'draft',
         gtdList: effectiveDate ? 'scheduled' : gtdList,
-        quadrant: ai?.suggestedQuadrant || (ai?.priority === 'high' ? 'do' : null),
+        quadrant: null, // Normal tasks remain in "Uncategorized/Inbox" and "Draft" to grant the user manual sorting freedom
         priority: ai?.priority || 'medium',
         dueDate: effectiveDate,
         scheduledDate: effectiveDate,

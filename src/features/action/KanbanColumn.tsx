@@ -34,13 +34,13 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
     <div
       ref={setNodeRef}
       className={cn(
-        'flex flex-col rounded-card bg-surface/50 border border-[rgba(255,255,255,0.06)]',
-        'min-h-[520px] transition-colors duration-150',
+        'flex flex-col h-full rounded-card bg-surface/50 border border-[rgba(255,255,255,0.06)] overflow-hidden',
+        'transition-colors duration-150',
         isOver && 'border-action/40 bg-action/[0.02] ring-1 ring-action/20'
       )}
     >
-      {/* Column Header */}
-      <div className="p-4 flex items-center justify-between border-b border-[rgba(255,255,255,0.06)]">
+      {/* Fixed Column Header */}
+      <div className="shrink-0 p-3.5 sm:p-4 flex items-center justify-between border-b border-[rgba(255,255,255,0.06)] bg-surface/80">
         <div className="flex items-center space-x-2">
           <span className="shrink-0" style={{ color: accentColor }}>
             {icon}
@@ -59,9 +59,9 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
         </span>
       </div>
 
-      {/* Task List Container */}
+      {/* Task List Scrollable Body */}
       <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-        <div className="p-3 flex-1 flex flex-col space-y-2.5 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto p-2.5 sm:p-3 flex flex-col space-y-2.5">
           {tasks.map((task) => (
             <TaskCard key={task.id} task={task} onEdit={onEditTask} />
           ))}

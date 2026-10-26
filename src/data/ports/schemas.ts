@@ -22,7 +22,9 @@ export type Priority = z.infer<typeof PriorityEnum>
 export const InboxStatusEnum = z.enum(['unprocessed', 'processed', 'trashed'])
 export type InboxStatus = z.infer<typeof InboxStatusEnum>
 
-export const EisenhowerQuadrantEnum = z.enum(['do', 'schedule', 'delegate', 'delete']).nullable()
+export const EisenhowerQuadrantEnum = z
+  .enum(['do', 'schedule', 'delegate', 'delete', 'q1', 'q2', 'q3', 'q4', 'uncategorized'])
+  .nullable()
 export type EisenhowerQuadrant = z.infer<typeof EisenhowerQuadrantEnum>
 
 export const InboxContextEnum = z.enum(['Next Action', 'Waiting For', 'Scheduled', 'Someday'])
@@ -74,7 +76,14 @@ export type InboxItem = z.infer<typeof InboxItemSchema>
 export const TaskStatusEnum = z.enum(['draft', 'in_progress', 'done'])
 export type TaskStatus = z.infer<typeof TaskStatusEnum>
 
-export const GTDListEnum = z.enum(['next', 'scheduled', 'waiting', 'someday'])
+export const GTDListEnum = z.enum([
+  'next',
+  'scheduled',
+  'waiting',
+  'someday',
+  'next_action',
+  'waiting_for',
+])
 export type GTDList = z.infer<typeof GTDListEnum>
 
 
@@ -91,10 +100,16 @@ export const TaskSchema = z.object({
   notes: z.string().optional().default(''),
   status: TaskStatusEnum.default('draft'),
   gtdList: GTDListEnum.default('next'),
+  gtd: z.string().nullable().optional(),
   quadrant: EisenhowerQuadrantEnum.default(null),
+  previousQuadrant: z.string().nullable().optional(),
+  previousGtd: z.string().nullable().optional(),
+  previousStatus: z.string().nullable().optional(),
   priority: PriorityEnum.default('medium'),
   dueDate: z.string().nullable().optional(),
   scheduledDate: z.string().nullable().optional(),
+  startTime: z.string().nullable().optional(),
+  isRecall: z.boolean().optional(),
   recallGroupId: z.string().nullable().optional(),
   recallRole: z.enum(['parent', 'child']).nullable().optional(),
   srsGroupId: z.string().nullable().optional(),
@@ -113,7 +128,12 @@ export const TaskSchema = z.object({
   updatedAt: z.string(),
   schemaVersion: z.number().default(1),
 })
-export type Task = z.infer<typeof TaskSchema>
+export type Task = z.infer<typeof TaskSchema> & {
+  previousQuadrant?: string | null
+  previousGtd?: string | null
+  previousStatus?: string | null
+  gtd?: string | null
+}
 
 /* -------------------------------------------------------------------------- */
 /*                                 TIME BLOCK                                 */

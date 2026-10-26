@@ -67,39 +67,41 @@
   display: none; /* Chrome, Safari and Opera */
 }
 
-/* OBOiFY Minimalist Flat Card Architecture (No glassmorphism, no neon glows) */
-.card {
-  background-color: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: var(--shadow-card);
-  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-}
+@layer components {
+  /* OBOiFY Minimalist Flat Card Architecture (No glassmorphism, no neon glows) */
+  .card {
+    background-color: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-card);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+  }
 
-.card:hover {
-  border-color: var(--border-strong);
-  box-shadow: var(--shadow-hover);
-}
+  .card:hover {
+    border-color: var(--border-strong);
+    box-shadow: var(--shadow-hover);
+  }
 
-/* Whisper-Quiet Subtle Hub Top Borders */
-.card[data-hub="action"],
-[data-hub="action"].card {
-  border-top: 2px solid var(--action);
-}
+  /* Whisper-Quiet Subtle Hub Top Borders */
+  .card[data-hub="action"],
+  [data-hub="action"].card {
+    border-top: 2px solid var(--action);
+  }
 
-.card[data-hub="growth"],
-[data-hub="growth"].card {
-  border-top: 2px solid var(--growth);
-}
+  .card[data-hub="growth"],
+  [data-hub="growth"].card {
+    border-top: 2px solid var(--growth);
+  }
 
-.card[data-hub="capital"],
-[data-hub="capital"].card {
-  border-top: 2px solid var(--capital);
-}
+  .card[data-hub="capital"],
+  [data-hub="capital"].card {
+    border-top: 2px solid var(--capital);
+  }
 
-.card[data-hub="knowledge"],
-[data-hub="knowledge"].card {
-  border-top: 2px solid var(--knowledge);
+  .card[data-hub="knowledge"],
+  [data-hub="knowledge"].card {
+    border-top: 2px solid var(--knowledge);
+  }
 }
 
 /* Reduced motion preference */
