@@ -90,9 +90,11 @@ const DraggableSidebarTask: React.FC<DraggableSidebarTaskProps> = ({
   return (
     <div
       ref={setNodeRef}
+      style={{ touchAction: 'none' }}
       {...attributes}
       {...listeners}
       data-testid={isHighlighted ? 'highlighted-task-card' : undefined}
+      onContextMenu={(e) => e.preventDefault()}
       onClick={() => {
         if (!isDragging) {
           onEdit?.(task)
@@ -100,7 +102,7 @@ const DraggableSidebarTask: React.FC<DraggableSidebarTaskProps> = ({
       }}
       className={cn(
         'group card p-3 relative cursor-grab active:cursor-grabbing select-none',
-        'border transition-all duration-300 flex items-start space-x-2',
+        'border transition-all duration-300 flex items-start space-x-2 touch-none',
         isHighlighted
           ? 'ring-2 ring-emerald-500/50 bg-emerald-500/10 border-emerald-500/40 shadow-lg shadow-emerald-500/10 animate-pulse'
           : 'border-[rgba(255,255,255,0.06)] bg-surface hover:bg-surface-2/60 hover:border-border-strong',
@@ -291,7 +293,7 @@ export const UnscheduledTasksSidebar: React.FC<UnscheduledTasksSidebarProps> = (
       id="unscheduled-sidebar"
       data-testid="unscheduled-tasks-sidebar"
       className={cn(
-        'card p-4 bg-surface/50 border flex flex-col h-full overflow-hidden transition-all duration-200',
+        'card p-3 sm:p-4 bg-surface/50 border flex flex-col h-full max-h-[35vh] md:max-h-none overflow-hidden transition-all duration-200',
         isOver
           ? 'border-action ring-2 ring-action/50 bg-action/5'
           : 'border-[rgba(255,255,255,0.06)]'

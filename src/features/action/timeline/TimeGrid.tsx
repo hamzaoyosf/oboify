@@ -183,7 +183,7 @@ export const TimeGrid: React.FC<TimeGridProps> = ({
           <div
             className={cn(
               'absolute inset-0',
-              isDraggingActive ? 'pointer-events-none z-0' : 'pointer-events-none z-15'
+              isDraggingActive ? 'pointer-events-none z-0' : 'pointer-events-none z-20'
             )}
           >
             {positionedBlocks.map((pos) => (

@@ -271,9 +271,11 @@ export const TimeBlockCard: React.FC<TimeBlockCardProps> = ({
         width: `calc(${widthPct}% - 4px)`,
         pointerEvents: isDragging || isDropTargetBlocked ? 'none' : 'auto',
         zIndex: isDragging ? 30 : isMenuOpen ? 50 : isDropTargetBlocked ? 0 : 20,
+        touchAction: 'none',
       }}
       {...attributes}
       {...(!isTaskDone ? listeners : {})}
+      onContextMenu={(e) => e.preventDefault()}
       onClick={(e) => {
         if (isMenuOpen) {
           e.stopPropagation()
@@ -285,7 +287,7 @@ export const TimeBlockCard: React.FC<TimeBlockCardProps> = ({
       className={cn(
         'absolute rounded-xl border',
         isTaskDone ? 'cursor-default' : 'cursor-grab active:cursor-grabbing',
-        'transition-all duration-150 group flex flex-col select-none shadow-sm overflow-hidden',
+        'transition-all duration-150 group flex flex-col select-none touch-none shadow-sm overflow-hidden',
         isShortBlock ? 'px-2 py-0.5 justify-center' : 'p-2 justify-between',
         borderClass,
         styles.bg,

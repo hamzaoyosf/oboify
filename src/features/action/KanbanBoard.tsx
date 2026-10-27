@@ -88,8 +88,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onEditTask, sel
   }, [tasks])
 
   return (
-    <div className="h-[calc(100vh-250px)] min-h-[480px] w-full flex flex-col overflow-hidden">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5 h-full overflow-hidden">
+    <div className="h-auto md:h-[calc(100vh-250px)] min-h-0 md:min-h-[480px] w-full flex flex-col overflow-visible md:overflow-hidden">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5 h-auto md:h-full pb-8 md:pb-0 overflow-visible md:overflow-hidden">
         <KanbanColumn
           id="draft"
           title="Draft"
