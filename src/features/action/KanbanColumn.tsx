@@ -34,7 +34,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
     <div
       ref={setNodeRef}
       className={cn(
-        'flex flex-col h-full rounded-card bg-surface/50 border border-[rgba(255,255,255,0.06)] overflow-hidden',
+        'flex flex-col min-h-[300px] md:min-h-0 h-auto md:h-full rounded-card bg-surface/50 border border-[rgba(255,255,255,0.06)] overflow-hidden',
         'transition-colors duration-150',
         isOver && 'border-action/40 bg-action/[0.02] ring-1 ring-action/20'
       )}
@@ -61,7 +61,7 @@ export const KanbanColumn: React.FC<KanbanColumnProps> = ({
 
       {/* Task List Scrollable Body */}
       <SortableContext items={tasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-        <div className="flex-1 overflow-y-auto p-2.5 sm:p-3 flex flex-col space-y-2.5">
+        <div className="flex-1 overflow-y-auto p-2.5 sm:p-3 flex flex-col space-y-2.5 min-h-[300px] md:min-h-0">
           {tasks.map((task) => (
             <TaskCard key={task.id} task={task} onEdit={onEditTask} />
           ))}

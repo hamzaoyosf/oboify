@@ -136,6 +136,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, isOverlay = false, onE
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
+    touchAction: 'none',
   }
 
   const priorityMeta = getPriorityBadge(task.priority)
@@ -184,9 +185,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, isOverlay = false, onE
       style={style}
       {...attributes}
       {...listeners}
+      onContextMenu={(e) => e.preventDefault()}
       onClick={() => onEdit?.(task)}
       className={cn(
-        'group p-2.5 sm:p-3 relative cursor-grab active:cursor-grabbing select-none transition-colors rounded-card shadow-card',
+        'group p-2.5 sm:p-3 relative cursor-grab active:cursor-grabbing select-none touch-none transition-colors rounded-card shadow-card',
         recallMeta
           ? cn(recallMeta.borderClass, recallMeta.bgClass)
           : 'card border border-[rgba(255,255,255,0.06)] bg-surface hover:bg-surface-2/60 hover:border-border-strong',

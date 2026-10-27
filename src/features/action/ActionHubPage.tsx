@@ -3,8 +3,8 @@ import { useSearchParams } from 'react-router-dom'
 import {
   DndContext,
   DragOverlay,
-  PointerSensor,
-  KeyboardSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragStartEvent,
@@ -14,7 +14,6 @@ import {
   closestCenter,
   CollisionDetection,
 } from '@dnd-kit/core'
-import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { Zap, Kanban as KanbanIcon, Grid, Clock, Plus, Filter, CalendarCheck, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
 import { format } from 'date-fns'
 import { Task, GTDList, TaskStatus, EisenhowerQuadrant, TimeBlock } from '@/data/ports/schemas'
@@ -92,17 +91,19 @@ export const ActionHubPage: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null)
 
-  // Configure accessible drag sensors with distance constraint
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 5,
-      },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    })
-  )
+    // Configure accessible drag sensors with mobile touch delay (250ms) and mouse distance constraints
+  const touchSensor = useSensor(TouchSensor, {
+    activationConstraint: {
+      delay: 250,
+      tolerance: 15,
+    },
+  })
+  const mouseSensor = useSensor(MouseSensor, {
+    activationConstraint: {
+      distance: 10,
+    },
+  })
+  const sensors = useSensors(mouseSensor, touchSensor)
 
   // Prioritize pointer collisions with graceful fallbacks so drops never bounce back
   const collisionDetectionStrategy: CollisionDetection = (args) => {

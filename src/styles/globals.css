@@ -113,3 +113,13 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* Mobile Touch & Drag-and-Drop Enhancements */
+.cursor-grab,
+.cursor-grabbing,
+[data-draggable],
+.select-none {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}

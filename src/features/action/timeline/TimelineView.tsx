@@ -164,9 +164,9 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
       {isLoading ? (
         <div className="card p-8 animate-pulse bg-surface-2/40 h-[600px]" />
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-5 h-[calc(100vh-170px)] min-h-[550px] overflow-hidden">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-5 h-auto md:h-[calc(100vh-170px)] min-h-0 md:min-h-[550px] overflow-visible md:overflow-hidden">
           {/* Left: Unscheduled Tasks Sidebar (4 cols on lg) */}
-          <div className="lg:col-span-4 h-full overflow-hidden flex flex-col">
+          <div className="md:col-span-4 max-h-[35vh] overflow-y-auto md:max-h-none md:overflow-visible h-auto md:h-full flex flex-col">
             <UnscheduledTasksSidebar
               tasks={liveTasks}
               selectedDate={selectedDateStr}
@@ -176,9 +176,9 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
           </div>
 
           {/* Right: Daily Schedule Grid (8 cols on lg) */}
-          <div className="lg:col-span-8 h-full overflow-hidden flex flex-col">
+          <div className="md:col-span-8 h-[550px] md:h-full overflow-hidden flex flex-col">
             {/* Consolidate Timeline Headers: Date Display, GCal Sync, and Navigation */}
-            <div className="flex flex-row items-center justify-between mb-4">
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-3 justify-between mb-4 w-full">
               {/* Left side: The Calendar Icon, Date text, and "TODAY" subtext */}
               <div className="flex items-center space-x-3">
                 <CalendarIcon className="w-5 h-5 text-action shrink-0" />
@@ -193,7 +193,7 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
               </div>
 
               {/* Right side: Flex group containing the "Connect GCal" button and the < Today > navigation group */}
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-between sm:justify-end">
                 {/* Google Calendar Sync Pill & Trigger */}
                 <div className="flex items-center space-x-1.5">
                   <button
@@ -246,36 +246,38 @@ export const TimelineView: React.FC<TimelineViewProps> = ({
                 </div>
 
                 {/* Date Pagination */}
-                <button
-                  type="button"
-                  onClick={handlePrevDay}
-                  className="p-1.5 rounded-lg border border-[rgba(255,255,255,0.06)] bg-surface-2 text-text-muted hover:text-text hover:bg-surface transition-colors"
-                  title="Previous day"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
+                <div className="flex items-center space-x-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handlePrevDay}
+                    className="p-1.5 rounded-lg border border-[rgba(255,255,255,0.06)] bg-surface-2 text-text-muted hover:text-text hover:bg-surface transition-colors"
+                    title="Previous day"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={handleToday}
-                  className={cn(
-                    'px-3 py-1.5 rounded-lg text-xs font-semibold font-mono border transition-all',
-                    isToday
-                      ? 'bg-action/20 text-action border-action/40'
-                      : 'bg-surface-2 text-text-muted border-[rgba(255,255,255,0.06)] hover:text-text'
-                  )}
-                >
-                  Today
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleToday}
+                    className={cn(
+                      'px-3 py-1.5 rounded-lg text-xs font-semibold font-mono border transition-all',
+                      isToday
+                        ? 'bg-action/20 text-action border-action/40'
+                        : 'bg-surface-2 text-text-muted border-[rgba(255,255,255,0.06)] hover:text-text'
+                    )}
+                  >
+                    Today
+                  </button>
 
-                <button
-                  type="button"
-                  onClick={handleNextDay}
-                  className="p-1.5 rounded-lg border border-[rgba(255,255,255,0.06)] bg-surface-2 text-text-muted hover:text-text hover:bg-surface transition-colors"
-                  title="Next day"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+                  <button
+                    type="button"
+                    onClick={handleNextDay}
+                    className="p-1.5 rounded-lg border border-[rgba(255,255,255,0.06)] bg-surface-2 text-text-muted hover:text-text hover:bg-surface transition-colors"
+                    title="Next day"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
 
