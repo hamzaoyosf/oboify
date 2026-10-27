@@ -5,8 +5,19 @@ import { MobileHeader } from './MobileHeader'
 import { QuickCaptureModal } from '@/features/inbox/QuickCaptureModal'
 import { CommandPalette } from '@/features/command/CommandPalette'
 import { useUIStore } from '@/app/store/uiStore'
+import { useTaskStore } from '@/app/store/taskStore'
+import { repos } from '@/data'
 
 export const BentoShell: React.FC = () => {
+  // Preload tasks into store on workspace mount
+  useEffect(() => {
+    repos.tasks.list().then((items) => {
+      if (items && items.length > 0) {
+        useTaskStore.getState().setTasks(items)
+      }
+    }).catch(() => {})
+  }, [])
+
   // Global keyboard shortcuts:
   // - Cmd+K / Ctrl+K opens Command Palette
   // - 'q' or 'i' opens Quick Capture (SRS FR-INB-01 / PRD AH-1)

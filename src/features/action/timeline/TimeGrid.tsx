@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import {
   HOUR_HEIGHT_IN_PIXELS,
@@ -8,7 +8,7 @@ import {
   PositionedTimeBlock,
 } from './layoutBlocks'
 import { TimeBlockCard } from './TimeBlockCard'
-import { TimeBlock } from '@/data/ports/schemas'
+import { Task, TimeBlock } from '@/data/ports/schemas'
 import { cn } from '@/lib/utils'
 
 interface TimeGridProps {
@@ -19,6 +19,8 @@ interface TimeGridProps {
   isDraggingActive?: boolean
   recallTaskIds?: Set<string>
   srsTaskIds?: Set<string>
+  allTasks?: Task[]
+  scrollToNowTrigger?: number
 }
 
 interface SlotProps {
@@ -70,8 +72,12 @@ export const TimeGrid: React.FC<TimeGridProps> = ({
   isDraggingActive = false,
   recallTaskIds,
   srsTaskIds,
+  allTasks,
+  scrollToNowTrigger,
 }) => {
   const [currentTime, setCurrentTime] = useState(new Date())
+  const timelineContainerRef = useRef<HTMLDivElement>(null)
+  const currentTimeRef = useRef<HTMLDivElement>(null)
 
   // Update current time every 30 seconds for the "now" indicator line
   useEffect(() => {
@@ -85,7 +91,8 @@ export const TimeGrid: React.FC<TimeGridProps> = ({
 
   // EXACT FORMULA: const topOffset = (hours + minutes / 60) * HOUR_HEIGHT_IN_PIXELS;
   const todayStr = currentTime.toISOString().slice(0, 10)
-  const isToday = selectedDate === todayStr
+  const localTodayStr = `${currentTime.getFullYear()}-${String(currentTime.getMonth() + 1).padStart(2, '0')}-${String(currentTime.getDate()).padStart(2, '0')}`
+  const isToday = selectedDate === todayStr || selectedDate === localTodayStr
 
   const nowHours = currentTime.getHours()
   const nowMinutes = currentTime.getMinutes()
@@ -98,8 +105,31 @@ export const TimeGrid: React.FC<TimeGridProps> = ({
     hour12: false,
   })
 
+  // Localized Auto-Scroll for the Timeline (centers red line in container without window scrolling)
+  useEffect(() => {
+    if (isNowVisible) {
+      const scrollToNow = () => {
+        const container = timelineContainerRef.current
+        const indicator = currentTimeRef.current
+        if (container && indicator) {
+          // Calculate the position to center the red line inside the container
+          const scrollPosition =
+            indicator.offsetTop - container.clientHeight / 2 + indicator.clientHeight / 2
+          container.scrollTo({ top: scrollPosition, behavior: 'smooth' })
+        }
+      }
+
+      scrollToNow()
+      const timer = setTimeout(scrollToNow, 50)
+      return () => clearTimeout(timer)
+    }
+  }, [isNowVisible, selectedDate, scrollToNowTrigger])
+
   return (
-    <div className="relative card p-4 bg-surface/50 border border-[rgba(255,255,255,0.06)] overflow-hidden">
+    <div
+      ref={timelineContainerRef}
+      className="relative card p-4 bg-surface/50 border border-[rgba(255,255,255,0.06)] h-full overflow-y-auto overflow-x-hidden"
+    >
       <div className="flex">
         {/* Hour Axis Labels (00:00 to 23:00) with absolute positioning centered on grid lines */}
         <div
@@ -158,7 +188,7 @@ export const TimeGrid: React.FC<TimeGridProps> = ({
           >
             {positionedBlocks.map((pos) => (
               <TimeBlockCard
-                key={pos.block.id}
+                key={pos.block.id + (pos.isCrossOver ? '-crossover' : '')}
                 positioned={pos}
                 onDelete={onDeleteBlock}
                 onEdit={onEditBlock}
@@ -168,6 +198,7 @@ export const TimeGrid: React.FC<TimeGridProps> = ({
                     pos.block.srsGroupId ||
                     (pos.block.taskId && (recallTaskIds?.has(pos.block.taskId) || srsTaskIds?.has(pos.block.taskId)))
                 )}
+                allTasks={allTasks}
               />
             ))}
           </div>
@@ -175,6 +206,7 @@ export const TimeGrid: React.FC<TimeGridProps> = ({
           {/* Red "Now" Indicator Line (Exact pixel coordinate) */}
           {isNowVisible && (
             <div
+              ref={currentTimeRef}
               style={{ top: `${nowTopPx}px` }}
               className="absolute inset-x-0 z-30 flex items-center pointer-events-none -mt-[1px]"
             >

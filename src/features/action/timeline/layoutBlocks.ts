@@ -1,4 +1,5 @@
 import { TimeBlock } from '@/data/ports/schemas'
+import { getPreviousDateStr, getBlockDateKey } from '../useTimeBlocks'
 
 export const HOUR_HEIGHT_IN_PIXELS = 96
 export const SLOT_HEIGHT_IN_PIXELS = 24 // 4 slots of 15 min per hour (96 / 4 = 24)
@@ -11,6 +12,7 @@ export interface PositionedTimeBlock {
   heightPx: number
   leftPct: number
   widthPct: number
+  isCrossOver?: boolean
 }
 
 function getMinutesFromMidnight(isoString: string): { hours: number; minutes: number; totalMinutes: number } {
@@ -36,25 +38,60 @@ export function snapTo15Minutes(date: Date): Date {
  * Layout algorithm implementing FR-TIM-02 with exact pixel math:
  * const topOffset = (hours + minutes / 60) * HOUR_HEIGHT_IN_PIXELS;
  * Maps start/end times precisely to the 24-hour grid.
+ * Supports cross-day overflow from yesterday rendering at 00:00 with remainder duration.
  */
-export function layoutTimeBlocks(blocks: TimeBlock[]): PositionedTimeBlock[] {
+export function layoutTimeBlocks(blocks: TimeBlock[], selectedDate?: string): PositionedTimeBlock[] {
   if (blocks.length === 0) return []
+
+  const yesterdayDateStr = selectedDate ? getPreviousDateStr(selectedDate) : undefined
 
   // 1. Convert to minutes representation
   const items = blocks.map((block) => {
-    const startInfo = getMinutesFromMidnight(block.start)
-    let endInfo = getMinutesFromMidnight(block.end)
+    const blockDate = getBlockDateKey(block.start)
+    const isCrossOverFromYesterday = Boolean(
+      selectedDate &&
+        yesterdayDateStr &&
+        (blockDate === yesterdayDateStr || block.start.startsWith(yesterdayDateStr))
+    )
 
-    // Check if end is next day or before start
-    const startDate = new Date(block.start)
-    const endDate = new Date(block.end)
-    if (endDate.getDate() !== startDate.getDate()) {
-      endInfo = { hours: 24, minutes: 0, totalMinutes: 1440 }
-    } else if (endInfo.totalMinutes <= startInfo.totalMinutes) {
+    let startInfo: { hours: number; minutes: number; totalMinutes: number }
+    let endInfo: { hours: number; minutes: number; totalMinutes: number }
+
+    if (isCrossOverFromYesterday) {
+      // Cross-over from yesterday: starts at 00:00 on today's grid with remainder duration
+      const startDate = new Date(block.start)
+      const endDate = new Date(block.end)
+      const startMinYesterday = startDate.getHours() * 60 + startDate.getMinutes()
+      const durationMin = Math.max(
+        15,
+        Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60))
+      )
+      const overflowMinutes = startMinYesterday + durationMin - 1440
+      const remainderMin = Math.min(1440, Math.max(15, overflowMinutes))
+
+      startInfo = { hours: 0, minutes: 0, totalMinutes: 0 }
       endInfo = {
-        hours: Math.floor((startInfo.totalMinutes + 15) / 60),
-        minutes: (startInfo.totalMinutes + 15) % 60,
-        totalMinutes: startInfo.totalMinutes + 15,
+        hours: Math.floor(remainderMin / 60),
+        minutes: remainderMin % 60,
+        totalMinutes: remainderMin,
+      }
+    } else {
+      startInfo = getMinutesFromMidnight(block.start)
+      endInfo = getMinutesFromMidnight(block.end)
+
+      // Check if end is next day or before start
+      const startDate = new Date(block.start)
+      const endDate = new Date(block.end)
+      const durationMin = Math.round((endDate.getTime() - startDate.getTime()) / 60000)
+
+      if (endDate.getDate() !== startDate.getDate() || startInfo.totalMinutes + durationMin > 1440) {
+        endInfo = { hours: 24, minutes: 0, totalMinutes: 1440 }
+      } else if (endInfo.totalMinutes <= startInfo.totalMinutes) {
+        endInfo = {
+          hours: Math.floor((startInfo.totalMinutes + 15) / 60),
+          minutes: (startInfo.totalMinutes + 15) % 60,
+          totalMinutes: startInfo.totalMinutes + 15,
+        }
       }
     }
 
@@ -64,6 +101,7 @@ export function layoutTimeBlocks(blocks: TimeBlock[]): PositionedTimeBlock[] {
       endInfo,
       startMin: startInfo.totalMinutes,
       endMin: endInfo.totalMinutes,
+      isCrossOver: isCrossOverFromYesterday,
     }
   })
 
@@ -136,6 +174,7 @@ export function layoutTimeBlocks(blocks: TimeBlock[]): PositionedTimeBlock[] {
           heightPx,
           leftPct,
           widthPct,
+          isCrossOver: item.isCrossOver,
         })
       }
     }

@@ -56,11 +56,11 @@ export const EditTimeBlockModal: React.FC<EditTimeBlockModalProps> = ({
 
     const baseDate = block.start.slice(0, 10)
     const newStart = new Date(`${baseDate}T${startTime}:00`)
-    const newEnd = new Date(`${baseDate}T${endTime}:00`)
+    let newEnd = new Date(`${baseDate}T${endTime}:00`)
 
+    // If end time is earlier or equal to start time (e.g. 23:45 -> 00:15), roll over to next day
     if (newEnd <= newStart) {
-      alert('End time must be after start time')
-      return
+      newEnd = new Date(newEnd.getTime() + 24 * 60 * 60 * 1000)
     }
 
     updateMutation.mutate({
@@ -89,10 +89,10 @@ export const EditTimeBlockModal: React.FC<EditTimeBlockModalProps> = ({
       }}
     >
       <div
-        className="w-full max-w-md card p-5 bg-surface border border-[rgba(255,255,255,0.12)] shadow-2xl space-y-4"
+        className="w-full max-w-md card bg-surface border border-[rgba(255,255,255,0.12)] shadow-2xl flex flex-col max-h-[85vh] overflow-hidden"
         data-hub="action"
       >
-        <div className="flex items-center justify-between pb-3 border-b border-[rgba(255,255,255,0.06)]">
+        <div className="flex items-center justify-between p-4 sm:p-5 border-b border-[rgba(255,255,255,0.06)] shrink-0">
           <div className="flex items-center space-x-2">
             <Clock className="w-4 h-4 text-action" />
             <h2 className="text-sm font-semibold text-text">Edit Time Block</h2>
@@ -106,69 +106,71 @@ export const EditTimeBlockModal: React.FC<EditTimeBlockModalProps> = ({
           </button>
         </div>
 
-        {block.gcal?.eventId && (
-          <div className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-action/10 border border-action/25 text-action text-xs font-mono">
-            <CalendarIcon className="w-3.5 h-3.5 shrink-0" />
-            <span>
-              Synced with Google Calendar ({block.source === 'gcal' ? 'Imported' : 'Exported'})
-            </span>
-          </div>
-        )}
+        <form onSubmit={handleSave} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 text-xs">
+            {block.gcal?.eventId && (
+              <div className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-action/10 border border-action/25 text-action text-xs font-mono">
+                <CalendarIcon className="w-3.5 h-3.5 shrink-0" />
+                <span>
+                  Synced with Google Calendar ({block.source === 'gcal' ? 'Imported' : 'Exported'})
+                </span>
+              </div>
+            )}
 
-        <form onSubmit={handleSave} className="space-y-3.5 text-xs">
-          <div>
-            <label className="block font-medium text-text-muted mb-1">Title</label>
-            <input
-              type="text"
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl bg-surface-2 border border-[rgba(255,255,255,0.08)] text-sm text-text focus:outline-none focus:border-action/60"
-            />
-          </div>
-
-          <div>
-            <label className="block font-medium text-text-muted mb-1">Category</label>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value as TimeBlockCategory)}
-              className="w-full px-3 py-2 rounded-xl bg-surface-2 border border-[rgba(255,255,255,0.08)] text-text focus:outline-none focus:border-action/60"
-            >
-              {CATEGORIES.map((cat) => (
-                <option key={cat.id} value={cat.id}>
-                  {cat.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 font-mono">
             <div>
-              <label className="block font-sans font-medium text-text-muted mb-1">Start Time</label>
+              <label className="block font-medium text-text-muted mb-1">Title</label>
               <input
-                type="time"
-                step="900"
+                type="text"
                 required
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-surface-2 border border-[rgba(255,255,255,0.08)] text-text focus:outline-none focus:border-action/60"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-surface-2 border border-[rgba(255,255,255,0.08)] text-sm text-text focus:outline-none focus:border-action/60"
               />
             </div>
 
             <div>
-              <label className="block font-sans font-medium text-text-muted mb-1">End Time</label>
-              <input
-                type="time"
-                step="900"
-                required
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
+              <label className="block font-medium text-text-muted mb-1">Category</label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value as TimeBlockCategory)}
                 className="w-full px-3 py-2 rounded-xl bg-surface-2 border border-[rgba(255,255,255,0.08)] text-text focus:outline-none focus:border-action/60"
-              />
+              >
+                {CATEGORIES.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 font-mono">
+              <div>
+                <label className="block font-sans font-medium text-text-muted mb-1">Start Time</label>
+                <input
+                  type="time"
+                  step="900"
+                  required
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-surface-2 border border-[rgba(255,255,255,0.08)] text-text focus:outline-none focus:border-action/60"
+                />
+              </div>
+
+              <div>
+                <label className="block font-sans font-medium text-text-muted mb-1">End Time</label>
+                <input
+                  type="time"
+                  step="900"
+                  required
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl bg-surface-2 border border-[rgba(255,255,255,0.08)] text-text focus:outline-none focus:border-action/60"
+                />
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-between pt-3 border-t border-[rgba(255,255,255,0.06)]">
+          <div className="shrink-0 p-4 sm:p-5 border-t border-[rgba(255,255,255,0.06)] bg-surface-2/40 flex items-center justify-between">
             <button
               type="button"
               onClick={handleDelete}

@@ -14,6 +14,7 @@ import {
   Search,
 } from 'lucide-react'
 import { useUIStore } from '@/app/store/uiStore'
+import { useTasks } from '@/features/action/useTasks'
 import { AuthPill } from '@/features/auth/components/AuthPill'
 import { NotificationBell } from '@/features/notifications/NotificationBell'
 import { cn } from '@/lib/utils'
@@ -37,6 +38,9 @@ const mainNavItems: NavItem[] = [
 export const HubRail: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false)
   const { openQuickCapture, openCommandPalette } = useUIStore()
+
+  // Sync tasks with repository/backend
+  useTasks()
 
   return (
     <>

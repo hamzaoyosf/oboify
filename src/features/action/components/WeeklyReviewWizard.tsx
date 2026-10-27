@@ -16,7 +16,7 @@ import {
 import { useUIStore } from '@/app/store/uiStore'
 import { useInbox, useConvertToTask, useDeleteInboxItem } from '@/features/inbox/useInbox'
 import { useTasks, useUpdateTask } from '@/features/action/useTasks'
-import { GTDList, Task } from '@/data/ports/schemas'
+import { GTDList, Task, TaskStatus } from '@/data/ports/schemas'
 import { cn } from '@/lib/utils'
 
 export const WeeklyReviewWizard: React.FC = () => {
@@ -63,11 +63,14 @@ export const WeeklyReviewWizard: React.FC = () => {
   }
 
   const handleToggleTaskStatus = (task: Task) => {
+    const isDone = task.status === 'done'
+    const nextStatus = (isDone ? (task.previousStatus || 'draft') : 'done') as TaskStatus
     updateTaskMutation.mutate({
       id: task.id,
       patch: {
-        status: task.status === 'done' ? 'in_progress' : 'done',
-        completedAt: task.status === 'done' ? null : new Date().toISOString(),
+        status: nextStatus,
+        completedAt: nextStatus === 'done' ? new Date().toISOString() : null,
+        previousStatus: !isDone ? task.status : null,
       },
     })
   }

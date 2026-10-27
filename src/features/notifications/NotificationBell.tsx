@@ -1,386 +1,330 @@
-import React, { useState, useRef, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { Bell, ArrowRight, Check, Plus, Loader2, X, Calendar, RotateCw } from 'lucide-react'
-import { useRenewalAlerts, RenewalAlertItem } from '@/features/capital/useRenewalAlerts'
-import {
-  useCalendarReconnectAlert,
-  requestCalendarToken,
-  isCalendarTokenExpired,
-  getCalendarToken,
-} from '@/services/calendar'
+import React, { useState, useRef, useEffect, useMemo } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Bell, CheckCircle2, AlertTriangle, CreditCard, X } from 'lucide-react'
+import { toast } from 'sonner'
+import { useNotificationEngine, Alert, advanceRenewalDate } from './useNotificationEngine'
+import { useSubscriptions, useUpdateSubscription } from '@/features/capital/useSubscriptions'
 import { cn } from '@/lib/utils'
 
 interface NotificationBellProps {
-  placement?: 'sidebar-collapsed' | 'sidebar-expanded' | 'header'
+  placement?: 'sidebar-expanded' | 'sidebar-collapsed' | 'header'
   align?: 'left' | 'right'
   className?: string
 }
 
 export const NotificationBell: React.FC<NotificationBellProps> = ({
-  placement = 'header',
-  align = 'right',
+  placement = 'sidebar-collapsed',
+  align = 'left',
   className,
 }) => {
-  const {
-    items,
-    todayCount,
-    overdueCount,
-    formattedTotalAmount,
-    createTaskReminder,
-  } = useRenewalAlerts(7)
-
-  const { needsReconnect, reason: calendarAlertReason, clearAlert } = useCalendarReconnectAlert()
-  const token = getCalendarToken()
-  const hasExpiredToken = isCalendarTokenExpired() && !!token
-  const showCalendarAlert = needsReconnect || hasExpiredToken
-
+  const { activeAlerts } = useNotificationEngine()
+  const { data: subscriptions = [] } = useSubscriptions('all')
+  const updateSubMutation = useUpdateSubscription()
   const [isOpen, setIsOpen] = useState(false)
-  const [createdTasks, setCreatedTasks] = useState<Record<string, boolean>>({})
-  const [isReconnecting, setIsReconnecting] = useState(false)
-  const [calendarError, setCalendarError] = useState<string | null>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const navigate = useNavigate()
 
-  const totalAlerts = items.length + (showCalendarAlert ? 1 : 0)
-  const isUrgent = todayCount > 0 || overdueCount > 0 || showCalendarAlert
+  // Urgent alerts trigger the red badge (Tasks & 3-0 day active financial warnings)
+  const urgentAlerts = useMemo(
+    () => activeAlerts.filter((a) => a.isUrgent),
+    [activeAlerts]
+  )
+  const urgentCount = urgentAlerts.length
 
-  const handleReconnectCalendar = async () => {
-    setIsReconnecting(true)
-    setCalendarError(null)
-    try {
-      await requestCalendarToken()
-      clearAlert()
-    } catch (err: any) {
-      setCalendarError(err?.message || 'Reconnect failed')
-    } finally {
-      setIsReconnecting(false)
-    }
-  }
-
-  // Close dropdown on click outside
+  // Handle outside clicks and ESC key
   useEffect(() => {
     if (!isOpen) return
-    const handleClickOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setIsOpen(false)
-      }
-    }
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setIsOpen(false)
     }
-    document.addEventListener('mousedown', handleClickOutside)
+
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(e.target as Node)
+      ) {
+        setIsOpen(false)
+      }
+    }
+
     document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('mousedown', handleClickOutside)
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
       document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('mousedown', handleClickOutside)
     }
   }, [isOpen])
 
-  const handleCreateTask = async (alert: RenewalAlertItem) => {
+  const handleMarkPaid = async (alert: Alert) => {
+    const sub = subscriptions.find((s) => s.id === alert.id)
+    if (!sub) return
+    const nextRenewal = advanceRenewalDate(sub.nextRenewal, sub.cycle)
     try {
-      await createTaskReminder.mutateAsync(alert)
-      setCreatedTasks((prev) => ({ ...prev, [alert.subscription.id]: true }))
-    } catch (err) {
-      console.error('Failed to create task from notification:', err)
+      await updateSubMutation.mutateAsync({
+        id: sub.id,
+        patch: { nextRenewal, updatedAt: new Date().toISOString() },
+      })
+      toast.success(`Marked ${sub.name} as paid`, {
+        description: `Next renewal advanced to ${nextRenewal}`,
+      })
+    } catch {
+      toast.error('Failed to update subscription')
     }
   }
 
+  const isExpandedSidebar = placement === 'sidebar-expanded'
+  const isHeader = placement === 'header'
+
+  const popoverPositionClass = isHeader
+    ? align === 'left'
+      ? 'top-full left-0 mt-2'
+      : 'top-full right-0 mt-2'
+    : 'left-full ml-3 bottom-0'
+
   return (
-    <div className={cn('relative', className)} ref={containerRef}>
-      {/* Trigger Button */}
-      {placement === 'sidebar-expanded' ? (
+    <div className={cn('relative inline-flex items-center', className)}>
+      {isExpandedSidebar ? (
         <button
+          ref={buttonRef}
           type="button"
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            'w-full flex items-center justify-between h-9 px-3 rounded-lg border text-xs transition-all',
+            'group flex items-center w-full h-10 px-3 rounded-lg transition-all duration-150',
             isOpen
-              ? 'bg-surface-2 text-text border-gray-600 shadow-sm'
-              : 'bg-surface border-border text-text-muted hover:text-text hover:bg-surface-2 hover:border-gray-600'
+              ? 'bg-surface-2 text-text font-medium border-l-2 border-red-500 shadow-sm'
+              : 'text-text-muted hover:text-text hover:bg-surface'
           )}
-          title="Notifications & Subscription Renewal Alerts"
-          aria-expanded={isOpen}
-          aria-label="Open notifications"
+          aria-label={`Notifications (${activeAlerts.length} active, ${urgentCount} urgent)`}
+          title={
+            urgentCount > 0
+              ? `${urgentCount} urgent alerts`
+              : activeAlerts.length > 0
+              ? `${activeAlerts.length} heads-up alerts`
+              : 'Notifications'
+          }
         >
-          <div className="flex items-center space-x-2">
-            <span className="relative">
-              <Bell className="w-3.5 h-3.5" />
-              {totalAlerts > 0 && (
-                <span
-                  className={cn(
-                    'absolute -top-1.5 -right-1.5 w-2 h-2 rounded-full',
-                    isUrgent ? 'bg-red-500' : 'bg-emerald-500'
-                  )}
-                />
-              )}
+          <span className="relative flex items-center justify-center shrink-0 w-5 h-5 text-text-muted group-hover:text-text">
+            <Bell className="w-4 h-4 transition-transform group-hover:scale-105" />
+            {urgentCount > 0 && (
+              <span
+                data-testid="notification-badge"
+                className="bg-red-500 text-white rounded-full absolute -top-1 -right-1 text-[10px] w-4 h-4 flex items-center justify-center font-bold shadow-sm pointer-events-none"
+              >
+                {urgentCount > 99 ? '99+' : urgentCount}
+              </span>
+            )}
+          </span>
+          <span className="ml-3 text-sm truncate">Alerts</span>
+          {urgentCount > 0 ? (
+            <span className="ml-auto px-1.5 py-0.2 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-mono font-bold">
+              {urgentCount}
             </span>
-            <span>Alerts</span>
-          </div>
-
-          {totalAlerts > 0 ? (
-            <span
-              className={cn(
-                'px-1.5 py-0.5 rounded text-[10px] font-mono font-bold leading-none',
-                isUrgent ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-              )}
-            >
-              {totalAlerts}
+          ) : activeAlerts.length > 0 ? (
+            <span className="ml-auto px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-mono font-bold">
+              {activeAlerts.length}
             </span>
-          ) : (
-            <span className="text-[10px] font-mono text-text-faint">0</span>
-          )}
+          ) : null}
         </button>
       ) : (
         <button
+          ref={buttonRef}
           type="button"
           onClick={() => setIsOpen(!isOpen)}
           className={cn(
-            'relative p-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors',
-            isOpen && 'text-text bg-surface-2'
+            'relative p-2 rounded-lg text-text-muted hover:text-text hover:bg-surface-2 transition-colors focus:outline-none focus:ring-1 focus:ring-emerald-500/50',
+            isOpen && 'bg-surface-2 text-text'
           )}
-          title="Notifications & Subscription Renewal Alerts"
-          aria-expanded={isOpen}
-          aria-label="Open notifications"
+          aria-label={`Notifications (${activeAlerts.length} active, ${urgentCount} urgent)`}
+          title={
+            urgentCount > 0
+              ? `${urgentCount} urgent alerts`
+              : activeAlerts.length > 0
+              ? `${activeAlerts.length} heads-up alerts`
+              : 'Notifications'
+          }
         >
           <Bell className="w-4 h-4" />
-          {totalAlerts > 0 && (
+          {urgentCount > 0 && (
             <span
-              className={cn(
-                'absolute top-1 right-1 flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full text-[10px] font-mono font-bold leading-none shadow-sm',
-                isUrgent ? 'bg-red-500 text-white' : 'bg-emerald-500 text-gray-950'
-              )}
+              data-testid="notification-badge"
+              className="bg-red-500 text-white rounded-full absolute -top-1 -right-1 text-[10px] w-4 h-4 flex items-center justify-center font-bold shadow-sm pointer-events-none"
             >
-              {totalAlerts}
+              {urgentCount > 99 ? '99+' : urgentCount}
             </span>
           )}
         </button>
       )}
 
-      {/* Notifications Popover */}
+      {/* Unified Notification Dropdown */}
       {isOpen && (
-        <>
-          {/* Mobile Backdrop Overlay */}
-          <div
-            className="fixed inset-0 bg-black/60 z-40 md:hidden animate-in fade-in duration-150"
-            onClick={() => setIsOpen(false)}
-            aria-hidden="true"
-          />
-
-          <div
-            className={cn(
-              'z-50 rounded-xl bg-surface border border-border shadow-2xl animate-in fade-in duration-150',
-              // Mobile (< md): Centered viewport modal fixed just below the mobile top bar with safe horizontal margins
-              'fixed inset-x-3 top-16 max-w-sm sm:max-w-md mx-auto md:static md:inset-x-auto md:top-auto md:max-w-none',
-              // Desktop (>= md) placements:
-              placement === 'sidebar-collapsed' && 'md:absolute md:bottom-0 md:left-full md:ml-3.5 md:w-96',
-              placement === 'sidebar-expanded' && 'md:absolute md:bottom-full md:left-0 md:mb-2 md:w-80',
-              placement === 'header' && (align === 'right' ? 'md:absolute md:top-full md:right-0 md:mt-2 md:w-96' : 'md:absolute md:top-full md:left-0 md:mt-2 md:w-96')
-            )}
-            role="dialog"
-            aria-label="Notifications panel"
-            aria-modal="true"
-          >
-            {/* Popover Header */}
-            <div className="flex items-center justify-between p-3.5 border-b border-border">
-              <div className="flex items-center space-x-2">
-                <span className="p-1 rounded bg-surface-2 text-emerald-400">
-                  <Bell className="w-3.5 h-3.5" />
+        <div
+          ref={dropdownRef}
+          className={cn(
+            'absolute w-80 sm:w-88 bg-surface border border-border rounded-xl shadow-2xl z-50 overflow-hidden backdrop-blur-md',
+            popoverPositionClass
+          )}
+          role="dialog"
+          aria-label="Notification Radar"
+        >
+          {/* Header */}
+          <div className="p-3 border-b border-border flex items-center justify-between bg-surface-2/40">
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-semibold text-text uppercase tracking-wider font-mono">
+                Unified Radar
+              </span>
+              {urgentCount > 0 ? (
+                <span className="px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] font-mono font-bold">
+                  {urgentCount} Urgent
                 </span>
-                <h3 className="text-xs font-semibold text-text uppercase tracking-wider">
-                  Notifications
-                </h3>
-              </div>
-              <div className="flex items-center space-x-2">
-                {totalAlerts > 0 ? (
-                  <span
-                    className={cn(
-                      'px-2 py-0.5 rounded text-[10px] font-mono font-semibold',
-                      isUrgent
-                        ? 'bg-red-500/15 text-red-400 border border-red-500/30'
-                        : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                    )}
-                  >
-                    {totalAlerts} Upcoming
-                  </span>
-                ) : (
-                  <span className="text-[10px] font-mono text-emerald-400">All Clear</span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  className="md:hidden p-1 text-text-muted hover:text-text rounded-md hover:bg-surface-2 transition-colors ml-1"
-                  aria-label="Close notifications"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+              ) : activeAlerts.length > 0 ? (
+                <span className="px-1.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-mono font-bold">
+                  {activeAlerts.length} Heads-up
+                </span>
+              ) : (
+                <span className="px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-mono font-medium">
+                  Clean
+                </span>
+              )}
             </div>
-
-          {/* Popover Content */}
-          <div className="max-h-80 overflow-y-auto divide-y divide-border/60">
-            {/* Google Calendar Reconnect Alert */}
-            {showCalendarAlert && (
-              <div className="p-3.5 bg-amber-500/10 border-b border-amber-500/20 text-xs font-mono space-y-2">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center space-x-2 text-amber-400 font-bold">
-                    <Calendar className="w-4 h-4 shrink-0" />
-                    <span>Reconnect Calendar</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={clearAlert}
-                    className="text-text-muted hover:text-text p-0.5 rounded transition-colors"
-                    title="Dismiss alert"
-                    aria-label="Dismiss calendar alert"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-                <p className="text-[11px] text-text-muted leading-tight font-sans">
-                  {calendarAlertReason || 'Google Calendar token has expired. Reconnect to resume timeline synchronization.'}
-                </p>
-                {calendarError && (
-                  <div className="text-[10px] text-red-400 font-mono">
-                    {calendarError}
-                  </div>
-                )}
-                <button
-                  type="button"
-                  disabled={isReconnecting}
-                  onClick={handleReconnectCalendar}
-                  className="w-full flex items-center justify-center space-x-2 px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 font-mono text-xs font-semibold transition-all disabled:opacity-50"
-                >
-                  {isReconnecting ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <RotateCw className="w-3.5 h-3.5" />
-                  )}
-                  <span>{isReconnecting ? 'Reconnecting...' : 'Reconnect Google Calendar'}</span>
-                </button>
-              </div>
-            )}
-
-            {totalAlerts === 0 ? (
-              <div className="py-8 px-4 text-center space-y-2">
-                <div className="w-8 h-8 rounded-full bg-surface-2 border border-border flex items-center justify-center mx-auto text-emerald-400">
-                  <Check className="w-4 h-4 stroke-[2.5]" />
-                </div>
-                <p className="text-xs font-medium text-text">All caught up!</p>
-                <p className="text-[11px] text-text-muted max-w-[220px] mx-auto">
-                  No upcoming subscription renewals or active alerts at this time.
-                </p>
-              </div>
-            ) : (
-              items.map((alert) => {
-                const isTaskAdded = createdTasks[alert.subscription.id]
-
-                return (
-                  <div
-                    key={alert.subscription.id}
-                    className="p-3.5 hover:bg-surface-2/40 transition-colors space-y-2"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <div className="flex items-center space-x-2">
-                          <p className="text-xs font-semibold text-text truncate">
-                            {alert.subscription.name}
-                          </p>
-                          {alert.isToday && (
-                            <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[9px] font-mono font-bold">
-                              Due Today
-                            </span>
-                          )}
-                          {alert.isOverdue && (
-                            <span className="px-1.5 py-0.2 rounded bg-red-500/20 text-red-400 border border-red-500/30 text-[9px] font-mono font-bold">
-                              Overdue
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-[11px] font-mono text-text-muted mt-0.5">
-                          Renewal: <span className="text-text">{alert.subscription.nextRenewal}</span>
-                          {!alert.isToday && !alert.isOverdue && (
-                            <span className="text-text-faint ml-1">
-                              (in {alert.daysUntilRenewal}d)
-                            </span>
-                          )}
-                        </p>
-                      </div>
-
-                      <div className="text-right shrink-0">
-                        <span className="font-mono text-xs font-bold text-text">
-                          {alert.formattedAmount}
-                        </span>
-                        <p className="text-[10px] text-text-faint font-mono capitalize">
-                          {alert.subscription.cycle}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Action button */}
-                    <div className="flex items-center justify-between pt-1">
-                      <span className="text-[10px] font-mono text-text-muted">
-                        Category: <span className="capitalize">{alert.subscription.category}</span>
-                      </span>
-
-                      <button
-                        type="button"
-                        disabled={isTaskAdded || createTaskReminder.isPending}
-                        onClick={() => handleCreateTask(alert)}
-                        className={cn(
-                          'flex items-center space-x-1 px-2.5 py-1 rounded text-[11px] font-mono transition-all',
-                          isTaskAdded
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 cursor-default'
-                            : 'bg-surface-2 hover:bg-surface-3 border border-border text-text hover:text-emerald-400 active:scale-95'
-                        )}
-                        title="Add this renewal as a GTD Next Action in Action Hub"
-                      >
-                        {createTaskReminder.isPending ? (
-                          <>
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                            <span>Adding...</span>
-                          </>
-                        ) : isTaskAdded ? (
-                          <>
-                            <Check className="w-3 h-3 text-emerald-400" />
-                            <span>Task Added</span>
-                          </>
-                        ) : (
-                          <>
-                            <Plus className="w-3 h-3" />
-                            <span>Add to Tasks</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                )
-              })
-            )}
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="p-1 rounded-md text-text-muted hover:text-text hover:bg-surface transition-colors"
+              aria-label="Close notifications"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
           </div>
 
-          {/* Popover Footer */}
-          <div className="p-3 border-t border-border flex items-center justify-between text-xs bg-surface-2/30">
-            {totalAlerts > 0 ? (
-              <span className="text-[11px] font-mono text-text-muted">
-                Total due: <span className="text-text font-bold">{formattedTotalAmount}</span>
-              </span>
+          {/* Alert List / Empty State */}
+          <div className="max-h-80 overflow-y-auto">
+            {activeAlerts.length === 0 ? (
+              <div className="p-6 text-center text-text-muted">
+                <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-400 mb-2 opacity-80" />
+                <p className="text-sm font-medium text-text">Mind Clear - No active alerts.</p>
+                <p className="text-xs text-text-muted mt-1 font-mono">
+                  All tasks are currently on track.
+                </p>
+              </div>
             ) : (
-              <span className="text-[11px] font-mono text-text-faint">
-                OBOiFY Alerts
-              </span>
-            )}
+              <div className="divide-y divide-border/60">
+                {activeAlerts.map((alert) => {
+                  const isUrgent = alert.isUrgent
+                  const isFinance = alert.type === 'finance'
 
-            <Link
-              to="/app/capital"
-              onClick={() => setIsOpen(false)}
-              className="text-[11px] font-mono text-emerald-400 hover:text-emerald-300 flex items-center space-x-1 transition-colors"
-            >
-              <span>Manage Subscriptions</span>
-              <ArrowRight className="w-3 h-3" />
-            </Link>
+                  return (
+                    <div
+                      key={`${alert.type}-${alert.id}-${alert.title}`}
+                      className={cn(
+                        'p-3 border-l-2 transition-colors space-y-2',
+                        isUrgent
+                          ? 'border-l-red-500 bg-red-500/5 hover:bg-red-500/10'
+                          : 'border-l-amber-500 bg-amber-500/5 hover:bg-amber-500/10'
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center space-x-1.5">
+                            {isFinance ? (
+                              <CreditCard
+                                className={cn(
+                                  'w-3.5 h-3.5 shrink-0',
+                                  isUrgent ? 'text-red-400' : 'text-amber-400'
+                                )}
+                              />
+                            ) : (
+                              <AlertTriangle
+                                className={cn(
+                                  'w-3.5 h-3.5 shrink-0',
+                                  isUrgent ? 'text-red-400' : 'text-amber-400'
+                                )}
+                              />
+                            )}
+                            <p className="text-xs font-semibold text-text truncate">
+                              {alert.title}
+                            </p>
+                          </div>
+                          <p
+                            className={cn(
+                              'text-[11px] font-mono mt-0.5 ml-5',
+                              isUrgent ? 'text-red-400' : 'text-amber-400'
+                            )}
+                          >
+                            {alert.subtitle}
+                          </p>
+                        </div>
+                        <span
+                          className={cn(
+                            'shrink-0 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase',
+                            isUrgent
+                              ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                              : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                          )}
+                        >
+                          {isUrgent ? 'Urgent' : 'Heads-up'}
+                        </span>
+                      </div>
+
+                      {/* Task Action Controls */}
+                      {alert.type === 'task' && (
+                        <div className="flex items-center justify-end space-x-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsOpen(false)
+                              navigate(`/app/action?view=timeline&highlight=${alert.id}`)
+                            }}
+                            className="px-2.5 py-1 text-[11px] font-mono rounded bg-surface border border-border text-text hover:bg-surface-2 transition-colors"
+                          >
+                            {alert.state === 'upcoming_10min' ? 'Reschedule' : 'Schedule'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsOpen(false)
+                              navigate(`/app/action?focus=${alert.id}`)
+                            }}
+                            className="px-2.5 py-1 text-[11px] font-mono font-semibold rounded bg-red-500/20 border border-red-500/40 text-red-400 hover:bg-red-500/30 transition-colors"
+                          >
+                            Focus Now
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Finance Action Controls */}
+                      {isFinance && (
+                        <div className="flex items-center justify-end space-x-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsOpen(false)
+                              navigate('/app/capital')
+                            }}
+                            className="px-2.5 py-1 text-[11px] font-mono rounded bg-surface border border-border text-text hover:bg-surface-2 transition-colors"
+                          >
+                            Review Capital Hub
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleMarkPaid(alert)}
+                            className="px-2.5 py-1 text-[11px] font-mono font-semibold rounded bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/30 transition-colors"
+                          >
+                            Mark Paid
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         </div>
-      </>
-    )}
-  </div>
+      )}
+    </div>
   )
 }

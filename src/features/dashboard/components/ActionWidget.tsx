@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { CheckSquare, ArrowUpRight, Clock, CheckCircle2, Circle } from 'lucide-react'
 import { useTasks, useUpdateTask } from '@/features/action/useTasks'
 import { useTimeBlocks } from '@/features/action/useTimeBlocks'
-import { Task, TimeBlock } from '@/data/ports/schemas'
+import { Task, TaskStatus, TimeBlock } from '@/data/ports/schemas'
 import { cn } from '@/lib/utils'
 
 export const ActionWidget: React.FC = () => {
@@ -33,8 +33,17 @@ export const ActionWidget: React.FC = () => {
     .slice(0, 3)
 
   const handleToggleTask = (id: string, currentStatus: string) => {
-    const nextStatus = currentStatus === 'done' ? 'draft' : 'done'
-    updateTaskMutation.mutate({ id, patch: { status: nextStatus } })
+    const targetTask = tasks.find((t: Task) => t.id === id)
+    const isDone = currentStatus === 'done'
+    const nextStatus = (isDone ? (targetTask?.previousStatus || 'draft') : 'done') as TaskStatus
+    updateTaskMutation.mutate({
+      id,
+      patch: {
+        status: nextStatus,
+        completedAt: nextStatus === 'done' ? new Date().toISOString() : null,
+        previousStatus: !isDone ? currentStatus : null,
+      },
+    })
   }
 
   const formatTime = (iso: string) => {
